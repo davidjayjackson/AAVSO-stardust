@@ -22,11 +22,11 @@ library(lubridate)
 
 ```
 
-### Variable Star: RT_CYG Jan 2, 2019 - Apr. 28. 2020
+### Variable Star: S_CEP Jan 2, 2019 - Apr. 28. 2020
 
 ```{r, echo=FALSE}
 rm(list=ls())
-mydata <-read_csv("./RT_Cyg1.csv",
+mydata <-read_csv("./star.csv",
                   col_types=cols(JD=col_double(),
                                  Magnitude=col_number())) 
 ```
@@ -44,9 +44,11 @@ weekavg <- mydata %>% group_by(weekly = floor_date(Ymd,"week")) %>%
   mutate(Brighter = weekly_magnitude -1)
 
 dailyavg <- mydata %>% group_by(Daily = Ymd) %>% 
-  summarise(daily_magnitude = mean(Magnitude)) %>%
-  mutate(Dimmer = daily_magnitude +1) %>%
-  mutate(Brighter = daily_magnitude -1)
+  summarise(Count =n(),   daily_magnitude = mean(Magnitude)) %>%
+    mutate(Dimmer = daily_magnitude +1) %>%
+  mutate(Brighter = daily_magnitude -1)  
+  
+  
 ```
 
 ```{r}
@@ -77,6 +79,9 @@ plot_3 <- ggplot(data=mydata,aes(x=Ymd,y=Magnitude,col="Magnitude")) + geom_poin
   labs(title="Daily Mean by Date",x="Date of Observations",y="Mean Magnitude")
 ggplotly(plot_3)
 
+```
+```{r}
+dailyavg %>% DT::datatable()
 ```
 
 
