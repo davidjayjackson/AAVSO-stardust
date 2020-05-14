@@ -1,0 +1,88 @@
+---
+title: "Rawdata Cleaning: Variable Star validation"
+author: "make sure to add CR column"
+date: "4/15/2020"
+output:
+  html_document:
+    df_print: paged
+---
+
+```{r setup, include=FALSE, echo=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+knitr::opts_chunk$set(fig.width=8, fig.height=6)
+library(tidyverse)
+library(plotly)
+library(insol)
+library(forecast)
+library(DT)
+library(data.table)
+theme_set(theme_light())
+```
+
+### Variable Star: PZ_Cas (Jan. 1970 - Mar. 2020)
+
+
+
+```{r, echo=FALSE}
+#dev.off()
+rm(list=ls())
+mydata <-read_csv("./PZ_Cas.csv") %>% 
+    select(JD,mag,band,val) %>%
+  mutate( JD = as.numeric(JD)) %>%
+  mutate(Ymd =insol::JD(JD,inverse = TRUE)) %>%
+  mutate(Ymd = as.Date(Ymd))  %>%
+  mutate(mag = as.numeric( gsub("<","", mag) ) + 0.99) 
+   # filter(band=="Vis." )
+mydata$starName <- "PZ_CAS"
+summary(mydata)
+```
+
+#### Basic Analysis: starName,band and val
+
+```{r, echo=FALSE}
+vs1 <-ggplot(mydata) + geom_point(aes(x=JD,y=Magnitude))
+ ggplotly(vs1)
+```
+
+#### Using Daily Means to validate Variable Stars
+
+```{r, echo=FALSE}
+starDust <- mydata %>%
+    group_by(JD) %>%
+    summarize(Mean = round(mean(mag),digits=1),
+              Brighter = round(Mean -1,digits = 1),
+              Fainter = round(Mean +1,digits= 1),
+              Obs = n()) %>% 
+    ungroup() %>% 
+    mutate(Verify = case_when(
+      (Brighter <  Mean -1) | (Fainter > Mean + 1) ~ "Yes",TRUE ~ "No")) %>%
+      filter(Obs >=3 & Verify=="Yes") 
+
+```
+```{r, echo=FALSE}
+mydata %>% plot_ly(x=~JD,y=~mag,name="mag",type="scatter",mode="markers") %>% 
+  add_lines(data=starDust,x=~JD,y=~Fainter,name="Mean +1") %>% 
+  add_lines(data=starDust,x=~JD,y=~Brighter,name="Mean -1") %>%
+   layout(yaxis = list(autorange = "reversed")) %>%
+  layout(title = "Daily Means +/- 1")
+```
+```{r}
+starDust %>% DT::datatable()
+```
+
+
+#### validation Using (3 DAy) Moving Averages
+
+```{r, echo=FALSE}
+mydata$MA <- forecast::ma(mydata$mag,order=3)
+mydata$MA <- round(mydata$MA,digits = 1)
+mydata$Plus <- round(mydata$MA +1,digits = 1)
+mydata$Minus <- round(mydata$MA -1,digits= 1)
+
+mydata %>% plot_ly(x=~JD,y=~mag,name="mag",type="scatter",mode="markers") %>% 
+  add_lines(x=~JD,y=~Plus,name="Mean +1") %>% 
+  add_lines(x=~JD,y=~Minus,name="Mean -1.") %>%
+   layout(yaxis = list(autorange = "reversed")) %>%
+    layout(title = "3 Day Moving +/- 1")
+
+```

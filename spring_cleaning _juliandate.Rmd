@@ -1,0 +1,86 @@
+---
+title: "Spring Cleaning: Variable Star Validation"
+author: "David J Jackson"
+date: "3/15/2020"
+output:
+  html_document:
+    df_print: paged
+---
+
+```{r setup, include=FALSE, echo=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+knitr::opts_chunk$set(fig.width=8, fig.height=6)
+library(tidyverse)
+library(plotly)
+library(insol)
+library(forecast)
+library(DT)
+library(data.table)
+library(ggeasy)
+library(LC)
+library(lubridate)
+```
+
+### Variable Star: RT_Cyg 
+
+```{r, echo=FALSE}
+
+rm(list=ls())
+mydata <-read_csv("./RT_Cyg.csv",
+                  col_types=cols(JD=col_double(),
+                                 Magnitude=col_number())) 
+
+mydata$Int <- as.integer(mydata$JD)
+mydata$Ymd <- JD(mydata$JD,inverse = TRUE)
+mydata$JD <- as.factor(mydata$JD)
+mydata$Int <- as.factor(mydata$Int)
+```
+
+#### Basic Analysis: Plot Daily Observations
+
+```{r, echo=FALSE}
+plot_ly(mydata,x=~JD,y=~Magnitude,type="scatter",mode="markers") %>%
+  layout(yaxis = list(autorange = "reversed")) %>%
+  layout(title = "Plot of Observation using complete Julian Date")
+ 
+plot_ly(mydata,x=~Int,y=~Magnitude,type="scatter",mode="markers") %>%
+  layout(yaxis = list(autorange = "reversed")) %>%
+  layout(title = "Plot of Observation using Integer Part of JUlian Date")
+        
+```
+
+#### Validate Variable Stars Using Daily Means (using interger part Julian Date) 
+
+```{r, echo=FALSE}
+starDust <- mydata %>%
+    group_by(Int) %>%
+    summarize(Mean = round(mean(Magnitude),digits=1),
+              Brighter = round(Mean -1,digits = 1),
+              Fainter = round(Mean +1,digits= 1),
+              Obs = n()) %>% 
+    ungroup() %>% 
+    mutate(Verify = case_when(
+      (Brighter <  Mean -1) | (Fainter > Mean + 1) ~ "Yes",TRUE ~ "No")) %>%
+      filter(Obs >=3 & Verify=="Yes") 
+
+```
+```{r,echo=FALSE}
+starDust %>% DT::datatable()
+```
+
+#### Validation Using (3 DAy) Moving Averages Using Julian Dates
+
+```{r, echo=FALSE}
+mydata$MA <- forecast::ma(mydata$Magnitude,order=3)
+mydata$MA <- round(mydata$MA,digits = 1)
+mydata$Plus <- round(mydata$MA +1,digits = 1)
+mydata$Minus <- round(mydata$MA -1,digits= 1)
+```
+```{r}
+mydata %>% plot_ly(x=~JD,y=~Magnitude,name="Magnitude",type="scatter",mode="markers") %>% 
+  add_lines(x=~JD,y=~Plus,name="Mean +1") %>% 
+  add_lines(x=~JD,y=~Minus,name="Mean -1.") %>%
+   layout(yaxis = list(autorange = "reversed")) %>%
+    layout(title = "3 Day Moving +/- 1")
+```
+

@@ -1,0 +1,147 @@
+---
+title: "More Fun With Moving Averages"
+author: "David J Jackson"
+date: "1/29/2020"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(data.table)
+library(pracma)
+```
+
+# Practical Numerical Math Routines(pracma) Library
+This package provides R implementations of more advanced functions in numerical analysis, with a special view on on optimization and time series routines. Uses Matlab/Octave function names where appropriate to simplify porting.
+
+```{r Import SIDC Daily ISN, echo=FALSE}
+ISN<- fread("../db/SN_d_tot_V2.0.csv",sep=";")
+colnames(ISN) <- c("Year","Month","Day", "Fdate","R", "Sd","Obs" ,"Defin" )
+# Add an explicit date feature to the data frame.
+ISN$Ymd <- as.Date(paste(ISN$Year, ISN$Month, 
+                         ISN$Day, sep = "-"))
+ISN_a <- ISN[Year>=1850,.(Ymd,Year,Month,R,Sd,Obs)]
+
+```
+
+# International Sunspot Number (ISN)
+"The daily (mean) ISN data comes from: SIDC - Solar Influences Data analysis Center Observatory(http://sidc.be)."
+
+"The Wolf number (also known as the International sunspot number, relative sunspot number, or Zürich number) is a quantity that measures the number of sunspots and groups of sunspots present on the surface of the Sun.", https://en.wikipedia.org/wiki/Wolf_number
+
+## Solar Influences Data analysis Center (Daily) ISN/R/Wolf
+
+```{r ISN summary, echo=FALSE}
+summary(ISN_a)
+
+```
+
+\newpage
+# Six (6) Moving Average Models
+### * Types: (s)imple, (t)riangular, (w)eighted,(m)odified, (e)xponentail, (r)running
+        
+```{r calc moving aberages, echo=FALSE}
+ISN_a$S <- movavg(ISN_a$R, 365,"s")
+ISN_a$T <- movavg(ISN_a$R, 365,"t")
+ISN_a$W <- movavg(ISN_a$R, 365,"w")
+ISN_a$M <- movavg(ISN_a$R, 365,"m")
+ISN_a$E <- movavg(ISN_a$R, 365,"e")
+ISN_a$Run <- movavg(ISN_a$R, 365,"r")
+ISN_b <- ISN_a %>% filter(Ymd>="2014-01-01")
+summary(ISN_b)
+```
+```{r simple moving average, echo=FALSE}
+ggplot(ISN_a) + geom_line(aes(x=Ymd,y=S,col="Simple")) +
+  geom_line(aes(x=Ymd,y=T,col="triangular")) +
+  geom_line(aes(x=Ymd,y=W,col="Weighted" )) +
+  geom_line(aes(x=Ymd,y=M,col="Modified" )) +
+  geom_line(aes(x=Ymd,y=E,col="Exponential" )) +
+  geom_line(aes(x=Ymd,y=Run,col="Running" )) +
+  labs(title="Comparing Six types of Moving Average",
+       subtitle="Kanzel ISN: 1951 - 2020",
+       x="Year-Month-Day",y="365 Days Moving Averages")
+
+ggplot(ISN_b) + geom_line(aes(x=Ymd,y=S,col="Simple")) +
+  geom_line(aes(x=Ymd,y=T,col="triangular")) +
+  geom_line(aes(x=Ymd,y=W,col="Weighted" )) +
+  geom_line(aes(x=Ymd,y=M,col="Modified" )) +
+  geom_line(aes(x=Ymd,y=E,col="Exponential" )) +
+  geom_line(aes(x=Ymd,y=Run,col="Running" )) +
+  labs(title="Current Solar Min: 2014 - 2019",
+       subtitle="Kanzel ISN: 1951 - 2020",
+       x="Year-Month-Day",y="365 Days Moving Averages")
+```
+
+\newpage
+## Simple Moving Average(365 Days)
+"s" for “simple”, it computes the simple moving average. n indicates the number of previous data points used with the current data point when calculating the moving average.
+
+```{r echo=FALSE}
+ggplot(ISN_a) + geom_line(aes(x=Ymd,y=S,col="Simple")) +
+  labs(x="Year",y="Moivng Average")
+
+ggplot(ISN_b) + geom_line(aes(x=Ymd,y=S,col="Simple")) +
+  labs(x="Year",y="Moivng Average",title="Current Solar Min: 2014 - 2019")
+```
+
+\newpage
+## Triangular Moving Average(365 Days)
+"t" for “triangular”, it computes the triangular moving average by calculating the first simple moving average with window width of ceil(n+1)/2; then it calculates a second simple moving average on the first moving average with the same window size.
+
+```{r echo=FALSE}
+ggplot(ISN_a) + geom_line(aes(x=Ymd,y=T,col="Triangular")) +
+  labs(x="Year",y="Moivng Average")
+
+ggplot(ISN_b) + geom_line(aes(x=Ymd,y=T,col="Triangular")) +
+  labs(x="Year",y="Moivng Average",title="Current Solar Min: 2014 - 2019")
+```
+
+\newpage
+## Weighted Moving Average(365 Days)
+"m" for “modified", it calculates the modified moving average. The first modified moving average is calculated like a simple moving average. Subsequent values are calculated by adding the new value and subtracting the last average from the resulting sum.
+
+```{r echo=FALSE}
+ggplot(ISN_a) + geom_line(aes(x=Ymd,y=W,col="Weighted")) +
+  labs(x="Year",y="Moivng Average")
+
+ggplot(ISN_b) + geom_line(aes(x=Ymd,y=W,col="Weighted")) +
+  labs(x="Year",y="Moivng Average",title="Current Solar Min: 2014 - 2019")
+```
+
+\newpage
+##  Modified Moving Average(365 Days)
+"m" for “modified", it calculates the modified moving average. The first modified moving average is calculated like a simple moving average. Subsequent values are calculated by adding the new value and subtracting the last average from the resulting sum.
+
+```{r echo=FALSE}
+ggplot(ISN_a) + geom_line(aes(x=Ymd,y=M,col="Modified")) +
+  labs(x="Year",y="Moivng Average")
+
+ggplot(ISN_b) + geom_line(aes(x=Ymd,y=M,col="Modified")) +
+  labs(x="Year",y="Moivng Average",title="Current Solar Min: 2014 - 2019")
+```
+
+\newpage
+## Exponential Moving Average(365 Days)
+"e" for“exponential", it computes the exponentially weighted moving average. The exponential moving average is a weighted moving average that reduces influences by applying more weight to recent data points () reduction factor 2/(n+1)
+
+```{r echo=FALSE}
+ggplot(ISN_a) + geom_line(aes(x=Ymd,y=E,col="Modified")) +
+  labs(x="Year",y="Moivng Average")
+
+ggplot(ISN_b) + geom_line(aes(x=Ymd,y=E,col="Modified")) +
+  labs(x="Year",y="Moivng Average",title="Current Solar Min: 2014 - 2019")
+```
+
+\newpage
+## Running Moving Average(365 Days)
+"r" for“running", this is an exponential moving average with a reduction factor of 1/n [same as the modified average?].
+
+```{r echo=FALSE}
+ggplot(ISN_a) + geom_line(aes(x=Ymd,y=Run,col="Modified")) +
+  labs(x="Year",y="Moivng Average")
+
+ggplot(ISN_b) + geom_line(aes(x=Ymd,y=Run,col="Modified")) +
+  labs(x="Year",y="Moivng Average",title="Current Solar Min: 2014 - 2019")
+```
+
