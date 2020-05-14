@@ -1,7 +1,7 @@
 ---
 title: "Spring Cleaning: Variable Star Validation"
 author: "David J Jackson"
-date: "3/15/2020"
+date: "May 14, 2020"
 output:
   html_document:
     df_print: paged
@@ -9,7 +9,7 @@ output:
 
 ```{r setup, include=FALSE, echo=FALSE}
 knitr::opts_chunk$set(echo = FALSE,warning=FALSE,message =FALSE)
-knitr::opts_chunk$set(fig.width=8, fig.height=6)
+knitr::opts_chunk$set(fig.width=10, fig.height=6)
 library(tidyverse)
 library(plotly)
 library(insol)
@@ -22,19 +22,18 @@ library(lubridate)
 
 ```
 
-### Variable Star: RT_Cyg 
+### Variable Star: RT_CYG Jan 2, 2019 - Apr. 28. 2020
 
 ```{r, echo=FALSE}
 rm(list=ls())
 mydata <-read_csv("./RT_Cyg1.csv",
                   col_types=cols(JD=col_double(),
                                  Magnitude=col_number())) 
-
-mydata$jd <- as.integer(mydata$JD)
-mydata$Ymd <- JD(mydata$jd,inverse = TRUE)
-mydata$Ymd <- as.Date(mydata$Ymd)
-summary(mydata)
-
+```
+```{r}
+mydata$datetime <- JD(mydata$JD,inverse = TRUE)
+mydata$Ymd <- as.Date(mydata$datetime) 
+mydata <- mydata %>% filter(Ymd >="2019-01-01")
 ```
 
 ```{r}
@@ -44,35 +43,39 @@ weekavg <- mydata %>% group_by(weekly = floor_date(Ymd,"week")) %>%
   mutate(Dimmer = weekly_magnitude +1) %>%
   mutate(Brighter = weekly_magnitude -1)
 
-dailyavg <- mydata %>% group_by(Julian = jd) %>% 
+dailyavg <- mydata %>% group_by(Daily = Ymd) %>% 
   summarise(daily_magnitude = mean(Magnitude)) %>%
   mutate(Dimmer = daily_magnitude +1) %>%
   mutate(Brighter = daily_magnitude -1)
 ```
 
 ```{r}
-# 
-# plot_1 <- ggplot(weekavg,aes(x=weekly,y=weekly_magnitude)) + geom_line() +
-#   easy_rotate_x_labels(angle=45) + scale_y_reverse() +
-#   labs(title="Weekly Mean Magnitude")
-# 
-# plot_2 <- ggplot(dailyavg,aes(x=Julian,y=daily_magnitude)) + geom_line() +
-#   easy_rotate_x_labels(angle=180) + scale_y_reverse() + 
-#     labs(title="Daily Mean")
+
+plot_1 <- ggplot(weekavg,aes(x=weekly,y=weekly_magnitude,col="Weekly")) + geom_line() +
+  easy_rotate_x_labels(angle=45) + scale_y_reverse() + 
+  geom_point(data=mydata,aes(x=Ymd,y=Magnitude,col="Magnitude")) +
+  labs(title="Comparing Daily Obs to Weekly Mean Magnitude ") + 
+  scale_x_date(date_breaks="1 month")
+
+# plot_2 <-  ggplot(dailyavg,aes(x=Daily,y=daily_magnitude,col="Mean")) + geom_line() +
+#   easy_rotate_x_labels(angle=180) + scale_y_reverse() +
+#     labs(title="Daily Mean") + geom_point(data=mydata,aes(x=Ymd,y=Magnitude,col="Magnitude"))
 # 
 # ggplotly(plot_1)
-# ggplotly(plot_2)
+ggplotly(plot_1)
 ```
+
+### Comparing Daily Observation  to Daily Mean (+1/-1) Magnitude
 
 ```{r}
 
-ggplot(data=mydata,aes(x=jd,y=Magnitude,col="Magnitude")) + geom_point() +
-   labs(title="Daily Mean by Julian Date",x="Julian Date",y="Mean Magnitude") + 
-  geom_line(data=dailyavg,aes(x=Julian,y=Brighter,col="Brighter")) +
-  geom_line(data=dailyavg,aes(x=Julian,y=Dimmer,col="Dimmer")) +
-  theme(axis.text.x = element_text(angle = 90, hjust = 0)) +
-   scale_y_reverse() + scale_x_continuous()
-
+plot_3 <- ggplot(data=mydata,aes(x=Ymd,y=Magnitude,col="Magnitude")) + geom_point() +  
+  geom_line(data=dailyavg,aes(x=Daily,y=Brighter,col="Brighter (-1)")) +
+  geom_line(data=dailyavg,aes(x=Daily,y=Dimmer,col="Dimmer(+1)")) +
+  theme(axis.text.x = element_text(angle = 45, hjust = 0)) +
+   scale_y_reverse() + scale_x_date(date_breaks="1 month") +
+  labs(title="Daily Mean by Date",x="Date of Observations",y="Mean Magnitude")
+ggplotly(plot_3)
 
 ```
 
